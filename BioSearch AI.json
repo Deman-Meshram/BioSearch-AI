@@ -1,0 +1,264 @@
+{
+  "name": "BioSearch AI",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.query || \"default-session\" }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        464,
+        544
+      ],
+      "id": "2e708df9-4a16-4c83-a8b9-b403c7a32f06",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "url": "=https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&rettype=abstract",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ID",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        592,
+        544
+      ],
+      "id": "2785604b-7857-4194-ac80-c1253ab0ee90",
+      "name": "PubMed_Fetch_Details"
+    },
+    {
+      "parameters": {
+        "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "term",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `The search query or topic provided by the user to search on PubMed.`, 'string') }}"
+            },
+            {
+              "name": "db",
+              "value": "pubmed"
+            },
+            {
+              "name": "retmode",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        544
+      ],
+      "id": "0f306cfb-345b-4990-aacb-984993bbc624",
+      "name": "PubMed_Search"
+    },
+    {
+      "parameters": {
+        "sendTo": "roylee000002@gmail.com",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        544
+      ],
+      "id": "9ad3251b-6784-47ab-bdd0-6737ee07f385",
+      "name": "Send a message in Gmail",
+      "webhookId": "e414de22-64ad-4ea0-9f21-bd5413179312",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "OrZFSQuzaE8B9tpn",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0d150f38-cab7-4d11-bbff-2737aab3b9eb",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        320
+      ],
+      "id": "3387096e-9ed2-4145-ad2d-0804531090d2",
+      "name": "Webhook",
+      "webhookId": "0d150f38-cab7-4d11-bbff-2737aab3b9eb"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1056,
+        320
+      ],
+      "id": "9b65ccb0-efe2-43ec-ae60-287e4367df3e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.query }}",
+        "options": {
+          "systemMessage": "You are BioSearch AI — an expert Biotech & Pharmaceutical Research Assistant.\n\nYou help researchers, scientists, and pharma professionals find and understand the latest biomedical research.\n\nGENERAL CONVERSATION:\n- If user sends a greeting (hi, hello, how are you), respond warmly and professionally.\n- If user asks general biotech/pharma questions (definitions, concepts, explanations), answer directly from your knowledge — do NOT use PubMed tools.\n- Only use PubMed tools when user asks for research papers, studies, or publications.\n\nWHEN USER ASKS FOR RESEARCH PAPERS:\n\nSTEP 1: Use PubMed_Search tool to search papers.\n- Search query = exact topic user mentioned\n- If user specifies number (e.g. \"give me 5 papers\"), fetch exactly that many\n- If user specifies year (e.g. \"2024 papers\", \"latest 2025\"), add year to search query\n- Default: fetch 3 papers if no number specified\n- Maximum: 5 papers per search\n\nSTEP 2: Use PubMed_Fetch_Details tool to get full details of all papers found.\n\nSTEP 3: Send detailed HTML email via Gmail:\n- Subject: \"🧬 Research Summary: [Topic]\"\n- Email Type: HTML\n\nUse EXACTLY this HTML format:\n\n<h2 style=\"color:#1a5276\">🧬 Research Summary: [Topic]</h2>\n<p>📊 <b>Total Papers Found: [number]</b></p>\n<hr>\n\nFor EACH paper use this format:\n<h3>📄 Paper [N]: [Full Paper Title]</h3>\n<p>🔬 <b>Key Findings:</b> [detailed findings 3-4 lines]</p>\n<p>⚗️ <b>Methodology:</b> [methodology 2-3 lines]</p>\n<p>📅 <b>Published:</b> [publication date]</p>\n<p>💡 <b>Biotech Application:</b> [application 2-3 lines]</p>\n<p>💊 <b>Clinical/Industry Relevance:</b> [pharma/biotech industry impact 1-2 lines]</p>\n<p>🔗 <b>PubMed Link:</b> <a href=\"https://pubmed.ncbi.nlm.nih.gov/[PMID]/\">Click Here</a></p>\n<hr>\n\n<p style=\"color:gray;font-size:12px\">📧 Automated by BioSearch AI</p>\n\nSTEP 4: Reply to webhook with this clean text:\n✅ Research summary for [Topic] sent to your email!\n📊 [number] papers found on PubMed.\n\nSTRICT RULES:\n- Use ACTUAL titles, findings, PMIDs — no placeholders ever\n- Email send AFTER fetching all papers\n- Never mention \"steps\" or \"workflow\" in reply\n- Keep each summary detailed but under 150 words per paper\n- Always include Clinical/Industry Relevance for pharma clients\n- If no papers found, reply: \"No recent papers found for this topic. Try a different search term.\"\n- For general questions, answer directly — do not search PubMed\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        528,
+        320
+      ],
+      "id": "aa9b4c71-251a-4905-a59b-4bc675152680",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        336,
+        544
+      ],
+      "id": "1537498c-bc8d-4839-b504-c7a27b88d1bb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "8TflnHsPi1bstljF",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PubMed_Fetch_Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PubMed_Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f2922e90-d77a-403d-943a-8922e66a7d77",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e7ea9f942d522f0faaaeb740566eb23eb2fe592628499c83cacfa121be29288c"
+  },
+  "nodeGroups": [],
+  "id": "9thIeFNTI7TcKflN",
+  "tags": [
+    {
+      "updatedAt": "2026-06-09T07:09:52.039Z",
+      "createdAt": "2026-06-09T07:09:52.039Z",
+      "id": "25QcafTS16WgSsZy",
+      "name": "Complete"
+    }
+  ]
+}
